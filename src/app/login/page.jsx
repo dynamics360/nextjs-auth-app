@@ -15,8 +15,6 @@ const loginSchema = z.object({
   password: z.string().min(6, 'Password must be at least 6 characters')
 });
 
-type LoginFormValues = z.infer<typeof loginSchema>;
-
 export default function LoginPage() {
   const { login, error, loading, clearError } = useAuth();
   const [showForgotPassword, setShowForgotPassword] = useState(false);
@@ -27,11 +25,11 @@ export default function LoginPage() {
     register,
     handleSubmit,
     formState: { errors }
-  } = useForm<LoginFormValues>({
+  } = useForm({
     resolver: zodResolver(loginSchema)
   });
 
-  const onSubmit = async (data: LoginFormValues) => {
+  const onSubmit = async (data) => {
     clearError();
     await login(data.email, data.password);
   };

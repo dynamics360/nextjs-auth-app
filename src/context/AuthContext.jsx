@@ -1,39 +1,20 @@
 'use client';
 
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect } from 'react';
 import axios from 'axios';
 import { useRouter } from 'next/navigation';
 
-// Define types
-type User = {
-  id: string;
-  name: string;
-  email: string;
-};
-
-type AuthContextType = {
-  user: User | null;
-  loading: boolean;
-  error: string | null;
-  register: (name: string, email: string, password: string) => Promise<void>;
-  login: (email: string, password: string) => Promise<void>;
-  logout: () => Promise<void>;
-  forgotPassword: (email: string) => Promise<void>;
-  resetPassword: (token: string, password: string) => Promise<void>;
-  clearError: () => void;
-};
-
 // Create context
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const AuthContext = createContext(undefined);
 
 // API base URL
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
 // Provider component
-export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [user, setUser] = useState<User | null>(null);
+export const AuthProvider = ({ children }) => {
+  const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState(null);
   const router = useRouter();
 
   // Check if user is logged in
@@ -53,7 +34,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   // Register user
-  const register = async (name: string, email: string, password: string) => {
+  const register = async (name, email, password) => {
     try {
       setLoading(true);
       const res = await axios.post(
@@ -64,14 +45,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setUser(res.data.user);
       setLoading(false);
       router.push('/');
-    } catch (error: any) {
+    } catch (error) {
       setError(error.response?.data?.message || 'Something went wrong');
       setLoading(false);
     }
   };
 
   // Login user
-  const login = async (email: string, password: string) => {
+  const login = async (email, password) => {
     try {
       setLoading(true);
       const res = await axios.post(
@@ -82,7 +63,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setUser(res.data.user);
       setLoading(false);
       router.push('/');
-    } catch (error: any) {
+    } catch (error) {
       setError(error.response?.data?.message || 'Invalid credentials');
       setLoading(false);
     }
@@ -94,32 +75,32 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       await axios.get(`${API_URL}/auth/logout`, { withCredentials: true });
       setUser(null);
       router.push('/login');
-    } catch (error: any) {
+    } catch (error) {
       setError(error.response?.data?.message || 'Error logging out');
     }
   };
 
   // Forgot password
-  const forgotPassword = async (email: string) => {
+  const forgotPassword = async (email) => {
     try {
       setLoading(true);
       await axios.post(`${API_URL}/auth/forgotpassword`, { email });
       setLoading(false);
       setError(null);
-    } catch (error: any) {
+    } catch (error) {
       setError(error.response?.data?.message || 'Error processing request');
       setLoading(false);
     }
   };
 
   // Reset password
-  const resetPassword = async (token: string, password: string) => {
+  const resetPassword = async (token, password) => {
     try {
       setLoading(true);
       await axios.put(`${API_URL}/auth/resetpassword/${token}`, { password });
       setLoading(false);
       router.push('/login');
-    } catch (error: any) {
+    } catch (error) {
       setError(error.response?.data?.message || 'Error resetting password');
       setLoading(false);
     }

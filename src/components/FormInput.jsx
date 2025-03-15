@@ -1,13 +1,8 @@
 'use client';
 
-import { forwardRef, InputHTMLAttributes } from 'react';
+import { forwardRef } from 'react';
 
-interface FormInputProps extends InputHTMLAttributes<HTMLInputElement> {
-  label: string;
-  error?: string;
-}
-
-const FormInput = forwardRef<HTMLInputElement, FormInputProps>(
+const FormInput = forwardRef(
   ({ label, error, ...props }, ref) => {
     return (
       <div className="mb-4">
@@ -29,4 +24,4 @@ const FormInput = forwardRef<HTMLInputElement, FormInputProps>(
 
 FormInput.displayName = 'FormInput';
 
-export default FormInput;
+export default FormInput; 

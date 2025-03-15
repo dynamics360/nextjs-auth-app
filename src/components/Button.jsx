@@ -1,21 +1,15 @@
 'use client';
 
-import { ButtonHTMLAttributes } from 'react';
+import { forwardRef } from 'react';
 
-interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  isLoading?: boolean;
-  variant?: 'primary' | 'secondary' | 'danger';
-  fullWidth?: boolean;
-}
-
-const Button = ({
+const Button = forwardRef(({
   children,
   isLoading = false,
   variant = 'primary',
   fullWidth = false,
   className = '',
   ...props
-}: ButtonProps) => {
+}, ref) => {
   const baseStyles = 'font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline';
   
   const variantStyles = {
@@ -32,6 +26,7 @@ const Button = ({
         isLoading ? 'opacity-50 cursor-not-allowed' : ''
       }`}
       disabled={isLoading || props.disabled}
+      ref={ref}
       {...props}
     >
       {isLoading ? (
@@ -47,6 +42,8 @@ const Button = ({
       )}
     </button>
   );
-};
+});
+
+Button.displayName = 'Button';
 
 export default Button; 

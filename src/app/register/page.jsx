@@ -19,8 +19,6 @@ const registerSchema = z.object({
   path: ['confirmPassword']
 });
 
-type RegisterFormValues = z.infer<typeof registerSchema>;
-
 export default function RegisterPage() {
   const { register: registerUser, error, loading, clearError } = useAuth();
 
@@ -28,11 +26,11 @@ export default function RegisterPage() {
     register,
     handleSubmit,
     formState: { errors }
-  } = useForm<RegisterFormValues>({
+  } = useForm({
     resolver: zodResolver(registerSchema)
   });
 
-  const onSubmit = async (data: RegisterFormValues) => {
+  const onSubmit = async (data) => {
     clearError();
     await registerUser(data.name, data.email, data.password);
   };
