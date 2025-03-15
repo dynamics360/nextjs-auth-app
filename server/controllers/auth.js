@@ -62,29 +62,49 @@ exports.register = async (req, res) => {
 // @access  Public
 exports.login = async (req, res) => {
   try {
+    console.log('Login request received:', req.body);
     const { email, password } = req.body;
 
     // Validate email & password
     if (!email || !password) {
-      return res.status(400).json({ success: false, message: 'Please provide email and password' });
+      console.log('Missing email or password');
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Please provide both email and password' 
+      });
     }
 
     // Check for user
+    console.log('Checking for user with email:', email);
     const user = await User.findOne({ email }).select('+password');
     if (!user) {
-      return res.status(401).json({ success: false, message: 'Invalid credentials' });
+      console.log('User not found with email:', email);
+      return res.status(401).json({ 
+        success: false, 
+        message: 'The email or password you entered is incorrect' 
+      });
     }
 
     // Check if password matches
+    console.log('Checking password match for user:', user.email);
     const isMatch = await user.matchPassword(password);
     if (!isMatch) {
-      return res.status(401).json({ success: false, message: 'Invalid credentials' });
+      console.log('Password does not match for user:', user.email);
+      return res.status(401).json({ 
+        success: false, 
+        message: 'The email or password you entered is incorrect' 
+      });
     }
 
+    console.log('Login successful for user:', user.email);
     sendTokenResponse(user, 200, res);
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ success: false, message: 'Server error' });
+    console.error('Login error:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'An error occurred during login. Please try again.', 
+      error: error.message 
+    });
   }
 };
 
@@ -218,5 +238,84 @@ exports.resetPassword = async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+// @desc    Check if user exists
+// @route   POST /api/auth/check-user
+// @access  Public
+exports.checkUserExists = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ success: false, message: 'Please provide an email address' });
+    }
+
+    // Check if user exists
+    const user = await User.findOne({ email });
+
+    // Return true or false based on whether user exists
+    return res.status(200).json({
+      success: true,
+      exists: !!user
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+// @desc    Direct password reset (without token verification)
+// @route   POST /api/auth/direct-reset-password
+// @access  Public
+exports.directResetPassword = async (req, res) => {
+  try {
+    console.log('Direct reset password request received:', req.body);
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      console.log('Missing email or password in direct reset password request');
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Please provide email and password' 
+      });
+    }
+
+    // Find user by email
+    console.log('Finding user with email:', email);
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      console.log('No user found with email:', email);
+      return res.status(404).json({ 
+        success: false, 
+        message: 'No user with that email' 
+      });
+    }
+
+    // Set new password
+    console.log('Setting new password for user:', user.email);
+    user.password = password;
+    await user.save();
+
+    console.log('Password updated successfully for user:', user.email);
+    // Return success response
+    res.status(200).json({ 
+      success: true, 
+      message: 'Password updated successfully',
+      data: {
+        id: user._id,
+        name: user.name,
+        email: user.email
+      }
+    });
+  } catch (error) {
+    console.error('Error in directResetPassword:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Server error during password reset',
+      error: error.message
+    });
   }
 }; 

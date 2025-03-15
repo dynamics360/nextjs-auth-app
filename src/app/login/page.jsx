@@ -1,13 +1,15 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import FormInput from '@/components/FormInput';
 import Button from '@/components/Button';
+import axios from 'axios';
 
 // Define validation schema
 const loginSchema = z.object({
@@ -16,10 +18,15 @@ const loginSchema = z.object({
 });
 
 export default function LoginPage() {
-  const { login, error, loading, clearError } = useAuth();
+  const router = useRouter();
+  const { login, error, loading, clearError, forgotPassword: authForgotPassword } = useAuth();
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [forgotPasswordEmail, setForgotPasswordEmail] = useState('');
   const [forgotPasswordSuccess, setForgotPasswordSuccess] = useState(false);
+  const [forgotPasswordError, setForgotPasswordError] = useState(null);
+  const [forgotPasswordLoading, setForgotPasswordLoading] = useState(false);
+  const loginAttempted = useRef(false);
+  const forgotPasswordAttempted = useRef(false);
 
   const {
     register,
@@ -30,23 +37,79 @@ export default function LoginPage() {
   });
 
   const onSubmit = async (data) => {
-    clearError();
-    await login(data.email, data.password);
+    // Prevent multiple submission attempts
+    if (loginAttempted.current) return;
+    loginAttempted.current = true;
+    
+    try {
+      clearError();
+      console.log('Submitting login form with data:', { email: data.email, passwordLength: data.password.length });
+      await login(data.email, data.password);
+    } catch (err) {
+      console.error('Error in login form submission:', err);
+      // The error is already handled in the login function in AuthContext
+    } finally {
+      // Allow another login attempt after a short delay
+      setTimeout(() => {
+        loginAttempted.current = false;
+      }, 1000);
+    }
   };
 
   const handleForgotPassword = async () => {
+    // Prevent multiple submission attempts
+    if (forgotPasswordAttempted.current) return;
+    forgotPasswordAttempted.current = true;
+    
     try {
+      if (!forgotPasswordEmail) {
+        setForgotPasswordError('Please enter your email address');
+        forgotPasswordAttempted.current = false;
+        return;
+      }
+
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(forgotPasswordEmail)) {
+        setForgotPasswordError('Please enter a valid email address');
+        forgotPasswordAttempted.current = false;
+        return;
+      }
+
+      setForgotPasswordError(null);
+      setForgotPasswordLoading(true);
       clearError();
-      await fetch('http://localhost:5000/api/auth/forgotpassword', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ email: forgotPasswordEmail })
+      
+      console.log('Checking user with email:', forgotPasswordEmail);
+      
+      // Check if user exists
+      const response = await axios.post('http://localhost:5000/api/auth/check-user', { 
+        email: forgotPasswordEmail 
       });
-      setForgotPasswordSuccess(true);
+      
+      console.log('User check response:', response.data);
+      
+      if (response.data.exists) {
+        // Generate a simple token
+        const timestamp = Date.now().toString();
+        const token = btoa(forgotPasswordEmail + '-' + timestamp);
+        
+        // Redirect to reset password page with the token and email
+        const encodedEmail = btoa(forgotPasswordEmail);
+        console.log('Redirecting to reset password page with token:', token);
+        router.push(`/reset-password/${token}?email=${encodedEmail}`);
+      } else {
+        // Show success message even if user doesn't exist (for security)
+        setForgotPasswordSuccess(true);
+      }
+      
+      setForgotPasswordLoading(false);
     } catch (error) {
-      console.error('Error sending reset email:', error);
+      console.error('Error checking user:', error);
+      
+      // Show generic error message
+      setForgotPasswordError('An error occurred. Please try again later.');
+      setForgotPasswordLoading(false);
+    } finally {
+      forgotPasswordAttempted.current = false;
     }
   };
 
@@ -56,7 +119,13 @@ export default function LoginPage() {
 
       {error && (
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-          <p>{error}</p>
+          <p className="font-medium">{error}</p>
+          {error.includes('incorrect') && (
+            <p className="text-sm mt-1">
+              Make sure you're using the correct email and password. If you've forgotten your password, 
+              use the "Forgot Password?" link below.
+            </p>
+          )}
         </div>
       )}
 
@@ -111,7 +180,7 @@ export default function LoginPage() {
 
           {forgotPasswordSuccess ? (
             <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
-              <p>If an account with that email exists, we've sent password reset instructions.</p>
+              <p>If an account with that email exists, you will be redirected to reset your password.</p>
               <p className="mt-2">
                 <button
                   onClick={() => {
@@ -127,8 +196,14 @@ export default function LoginPage() {
           ) : (
             <>
               <p className="mb-4 text-gray-600">
-                Enter your email address and we'll send you instructions to reset your password.
+                Enter your email address to reset your password. If your account exists, you'll be redirected to the password reset page.
               </p>
+
+              {forgotPasswordError && (
+                <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+                  <p>{forgotPasswordError}</p>
+                </div>
+              )}
 
               <div className="mb-4">
                 <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="reset-email">
@@ -148,10 +223,10 @@ export default function LoginPage() {
                 <Button
                   type="button"
                   onClick={handleForgotPassword}
-                  isLoading={loading}
+                  isLoading={forgotPasswordLoading}
                   fullWidth
                 >
-                  Send Reset Instructions
+                  Verify & Reset Password
                 </Button>
 
                 <button
